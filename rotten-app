@@ -1,0 +1,288 @@
+Segue abaixo como subi a aplicacao rotten-potatoes atraves da minha imagem.
+
+k3d cluster ls
+NAME         SERVERS   AGENTS   LOADBALANCER
+my-cluster   3/3       3/3      true
+
+k3d cluster delete my-cluster
+k3d cluster create --agents 3 --servers 3 -p "8080:30000@loadbalancer"
+kubectl apply -f deployment.yaml
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+PS C:\Users\andre\Documents\docker\proj-kubdev> git clone https://github.com/randrelr/rotten-potatoes.git
+Cloning into 'rotten-potatoes'...
+remote: Enumerating objects: 154, done.
+remote: Counting objects: 100% (28/28), done.
+remote: Compressing objects: 100% (22/22), done.
+Receiv: Total 154 (delta 11), reused 10 (delta 6), pack-reused 126 eceiving objects:  75% (116/154), 12.75 MiB | 12.75 MiB/s
+Receiving objects: 100% (154/154), 13.12 MiB | 12.83 MiB/s, done.
+Resolving deltas: 100% (21/21), done.
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Meu dockerfile abaixo :
+
+FROM python:3.8-slim-buster
+WORKDIR /app
+COPY requirements.txt .
+RUN python -m pip install -r requirements.txt
+COPY  .  /app
+EXPOSE 5000
+CMD ["gunicorn", "--workers=3", "--bind", "0.0.0.0:5000", "-c", "config.py", "app:app" ]
+
+------------------------------------------------------------------------------------------------------------------------------------------------------
+Criacao da imagem :
+
+docker build -t randrelr/rotten-potatoes:v1 .
+[+] Building 0.1s (2/2) FINISHED
+ => [internal] load build definition from Dockerfile                                                                                                      0.0s 
+ => => transferring dockerfile: 272B                                                                                                                      0.0s 
+ => [internal] load .dockerignore                                                                                      
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------
+Evidencia de geracao da imagem :
+
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\src> docker image ls
+REPOSITORY                                         TAG            IMAGE ID       CREATED         SIZE
+randrelr/rotten-potatoes                           v1             a87df980acd7   2 minutes ago   164MB
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+Fiz upload da imagem no docker hub :
+
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\src> docker push randrelr/rotten-potatoes:v1
+The push refers to repository [docker.io/randrelr/rotten-potatoes]
+646bbb6fa8a7: Pushed
+0e01641a0886: Pushed
+341bf8a31974: Pushed
+533e5a916fac: Pushed
+c0c176f8b748: Mounted from library/python
+527dab09f1a0: Mounted from library/python
+f2404ba18ea9: Mounted from library/python
+c42229255bc9: Mounted from library/python
+ad6b69b54919: Mounted from library/python
+v1: digest: sha256:af3ee3870a94332db3ee94b10b8a0aad8f9f640eabaa2ccb6578b7cc14a3643b size: 2208
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\src> 
+
+------------------------------------------------------------------------------------------------------------------------------------------------
+
+Gerei a versao latest da imagem :
+
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\src> docker tag randrelr/rotten-potatoes:v1 randrelr/rotten-potatoes:latest
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\src> docker image ls
+REPOSITORY                                         TAG            IMAGE ID       CREATED          SIZE  
+randrelr/rotten-potatoes                           latest         a87df980acd7   10 minutes ago   164MB 
+
+-------------------------------------------------------------------------------------------------------------------------------------------------
+
+Fiz upload da imagem no docker hub da imagem na versao latest:
+
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\src> docker push randrelr/rotten-potatoes:latest
+The push refers to repository [docker.io/randrelr/rotten-potatoes]
+646bbb6fa8a7: Layer already exists
+0e01641a0886: Layer already exists
+341bf8a31974: Layer already exists
+533e5a916fac: Layer already exists
+c0c176f8b748: Layer already exists
+527dab09f1a0: Layer already exists
+f2404ba18ea9: Layer already exists
+c42229255bc9: Layer already exists
+ad6b69b54919: Layer already exists
+latest: digest: sha256:af3ee3870a94332db3ee94b10b8a0aad8f9f640eabaa2ccb6578b7cc14a3643b size: 2208
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\src> 
+
+----------------------------------------------------------------------------------------------------------------------------------------------------
+
+Criacao do cluster kubernetes no k3D:
+
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\src> docker push randrelr/rotten-potatoes:latest
+The push refers to repository [docker.io/randrelr/rotten-potatoes]
+646bbb6fa8a7: Layer already exists
+0e01641a0886: Layer already exists
+341bf8a31974: Layer already exists
+533e5a916fac: Layer already exists
+c0c176f8b748: Layer already exists
+527dab09f1a0: Layer already exists
+f2404ba18ea9: Layer already exists
+c42229255bc9: Layer already exists
+ad6b69b54919: Layer already exists
+latest: digest: sha256:af3ee3870a94332db3ee94b10b8a0aad8f9f640eabaa2ccb6578b7cc14a3643b size: 2208
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\src> 
+
+Evidencia da criacao do cluster :
+
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\src> docker container ls
+CONTAINER ID   IMAGE                      COMMAND                  CREATED         STATUS         PORTS                                                      NAMES
+1c858b41f84d   rancher/k3d-proxy:5.2.2    "/bin/sh -c nginx-pr…"   3 minutes ago   Up 2 minutes   80/tcp, 0.0.0.0:62128->6443/tcp, 0.0.0.0:8080->30000/tcp   k3d-meucluster-serverlb
+132c334120bb   rancher/k3s:v1.21.7-k3s1   "/bin/k3s agent"         3 minutes ago   Up 2 minutes                                                              k3d-meucluster-agent-2
+e1a6c6bd380a   rancher/k3s:v1.21.7-k3s1   "/bin/k3s agent"         3 minutes ago   Up 2 minutes                                                              k3d-meucluster-agent-1
+eb13fa3acfb5   rancher/k3s:v1.21.7-k3s1   "/bin/k3s agent"         3 minutes ago   Up 2 minutes                                                              k3d-meucluster-agent-0
+d27f511c8036   rancher/k3s:v1.21.7-k3s1   "/bin/k3s server --t…"   3 minutes ago   Up 2 minutes                                                              k3d-meucluster-server-2
+f54615aecd10   rancher/k3s:v1.21.7-k3s1   "/bin/k3s server --t…"   3 minutes ago   Up 2 minutes                                                              k3d-meucluster-server-1
+5fc795a10bfd   rancher/k3s:v1.21.7-k3s1   "/bin/k3s server --c…"   3 minutes ago   Up 3 minutes                                                              k3d-meucluster-server-0
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\src> 
+
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\src> kubectl get nodes
+NAME                      STATUS   ROLES                       AGE     VERSION     
+k3d-meucluster-agent-0    Ready    <none>                      3m12s   v1.21.7+k3s1
+k3d-meucluster-agent-1    Ready    <none>                      3m12s   v1.21.7+k3s1
+k3d-meucluster-agent-2    Ready    <none>                      3m12s   v1.21.7+k3s1
+k3d-meucluster-server-0   Ready    control-plane,etcd,master   3m47s   v1.21.7+k3s1
+k3d-meucluster-server-1   Ready    control-plane,etcd,master   3m30s   v1.21.7+k3s1
+k3d-meucluster-server-2   Ready    control-plane,etcd,master   3m17s   v1.21.7+k3s1
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\src>
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Deployment do mongoDB
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+spec:
+  selector:
+    matchLabels:
+      app: mongodb 
+  template:
+    metadata:
+      labels:
+        app: mongodb
+    spec:
+      containers:
+      - name: mongodb
+        image: mongo:5.0.5
+        ports:
+          - containerPort: 27017
+        env:
+          - name: MONGO_INITDB_ROOT_USERNAME
+            value: mongouser
+          - name: MONGO_INITDB_ROOT_PASSWORD
+            value: mongopwd
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+spec:
+  selector:
+    app: mongodb
+  ports:
+  - port: 27017
+  type: ClusterIP
+
+---
+
+# Deployment da aplicacao web 
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: randrelr/rotten-potatoes:v1
+        ports:
+        - containerPort: 5000
+        env:
+        - name: MONGO_DB
+          value: admin
+        - name: MONGODB_HOST
+          value: mongodb
+        - name: MONGODB_PORT
+          value: "27017"
+        - name: MONGODB_USERNAME
+          value: mongouser
+        - name: MONGO_PASSWORD
+          value: mongopwd
+
+---
+
+# Servico da app
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  selector:
+    app: web
+  ports:
+    - port: 80
+      targetPort: 5000
+      nodePort: 30000
+  type: NodePort   
+          
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+FAzendo o deploy da app e do banco ao mesmo tempo com base no yaml acima ::
+
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\k8s> kubectl apply -f deployment.yaml
+deployment.apps/mongodb unchanged
+service/mongodb unchanged  
+deployment.apps/web created
+service/web created
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\k8s> 
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\k8s> kubectl get pods
+NAME                      READY   STATUS    RESTARTS   AGE
+mongodb-9f45bf784-fdpk4   1/1     Running   0          56m
+web-55449d9f6f-xh64j      1/1     Running   0          5m6s
+
+
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\k8s> kubectl get services
+NAME         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+kubernetes   ClusterIP   10.43.0.1       <none>        443/TCP        87m
+mongodb      ClusterIP   10.43.230.212   <none>        27017/TCP      57m
+web          NodePort    10.43.3.24      <none>        80:30000/TCP   6m9s
+PS C:\Users\andre\Documents\docker\proj-kubdev\rotten-potatoes\k8s>
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
