@@ -1,0 +1,151 @@
+
+Como já tinhamos a imagem da app conversao :
+
+randrelr/conversao-temperatura                     v1             dca18504b8d1   3 days ago     995MB
+
+Fiz o manifesto da seguinte forma :
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# Deployment da aplicacao web 
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+    spec:
+      containers:
+      - name: web
+        image: randrelr/conversao-temperatura:v1
+        ports:
+        - containerPort: 80
+
+---
+
+# Servico da app
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+spec:
+  selector:
+    app: web
+  ports:
+    - protocol: TCP
+      port: 80
+      nodePort: 30000
+  type: NodePort
+
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+PS C:\Users\andre\Documents\docker\proj-kubdev\app\conversao-temperatura\src> k3d cluster ls     
+NAME          SERVERS   AGENTS   LOADBALANCER
+k3s-default   3/3       3/3      true
+PS C:\Users\andre\Documents\docker\proj-kubdev\app\conversao-temperatura\src> k3d cluster delete k3s-default
+INFO[0000] Deleting cluster 'k3s-default'
+INFO[0013] Deleting cluster network 'k3d-k3s-default'
+INFO[0014] Deleting image volume 'k3d-k3s-default-images'
+INFO[0014] Removing cluster details from default kubeconfig...
+INFO[0014] Removing standalone kubeconfig file (if there is one)...
+INFO[0014] Successfully deleted cluster k3s-default!
+PS C:\Users\andre\Documents\docker\proj-kubdev\app\conversao-temperatura\src> k3d cluster create --agents 3 --servers 3 -p "8080:30000@loadbalancer"
+INFO[0000] portmapping '8080:30000' targets the loadbalancer: defaulting to [servers:*:proxy agents:*:proxy] 
+INFO[0000] Prep: Network
+INFO[0000] Created network 'k3d-k3s-default'
+INFO[0000] Created volume 'k3d-k3s-default-images'      
+INFO[0000] Starting new tools node...
+INFO[0000] Creating initializing server node
+INFO[0000] Creating node 'k3d-k3s-default-server-0'
+INFO[0004] Starting Node 'k3d-k3s-default-tools'        
+INFO[0005] Creating node 'k3d-k3s-default-server-1'     
+INFO[0006] Creating node 'k3d-k3s-default-server-2'     
+INFO[0006] Creating node 'k3d-k3s-default-agent-0'      
+INFO[0006] Creating node 'k3d-k3s-default-agent-1'      
+INFO[0006] Creating node 'k3d-k3s-default-agent-2'      
+INFO[0006] Creating LoadBalancer 'k3d-k3s-default-serverlb' 
+INFO[0006] Using the k3d-tools node to gather environment information 
+INFO[0008] Starting cluster 'k3s-default'
+INFO[0008] Starting the initializing server...
+INFO[0008] Starting Node 'k3d-k3s-default-server-0'     
+INFO[0010] Starting servers...
+INFO[0010] Starting Node 'k3d-k3s-default-server-1'     
+INFO[0035] Starting Node 'k3d-k3s-default-server-2'     
+                                                        INFO[0048] Starting Node 'k3d-k3s-default-agent-0'
+                                                                                                                INFO[0048] Starting Node 'k3d-k3s-default-agent         INFO[0048] Starting Node 'k3d-k3s-default-agent-1'
+                                                                 INFO[0058] Starting helpers...
+ult-serverlb'
+                  INFO[0069] Injecting '192.168.65.2 host.k3d.internal' into /etc/hosts of all nodes...
+                                                                                                        INFO[0069] Injecting records for host.k3d.internal and 
+for 7 network members into CoreDNS configmap...
+                                                INFO[0071] Cluster 'k3s-default' created successfully!
+                                                                                                        INFO[0071] You can now use it like this:
+
+ kubectl cluster-info
+
+PS C:\Users\andre\Documents\docker\proj-kubdev\app\conversao-temperatura\src> kubectl apply -f deployment.yaml
+deployment.apps/web created
+service/web created
+NAME                   READY   STATUS             RESTARTS   AGE
+web-75bd4d78f4-lndqj   0/1     ImagePullBackOff   0          27s
+PS C:\Users\andre\Documents\docker\proj-kubdev\app\conversao-temperatura\src> kubectl get all
+NAME                       READY   STATUS             RESTARTS   AGE
+pod/web-75bd4d78f4-lndqj   0/1     ImagePullBackOff   0          69s
+
+NAME                 TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)        AGE
+service/kubernetes   ClusterIP   10.43.0.1     <none>        443/TCP        7m24s
+service/web          NodePort    10.43.95.85   <none>        80:30000/TCP   69s
+
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/web   0/1     1            0           69s
+NAME                             DESIRED   CURRENT   READY   AGE
+replicaset.apps/web-75bd4d78f4   1         1         0       69s
+PS C:\Users\andre\Documents\docker\proj-kubdev\app\conversao-temperatura\src> kubectl get all
+NAME                       READY   STATUS    RESTARTS   AGE
+pod/web-75bd4d78f4-lndqj   1/1     Running   0          78s
+
+NAME                 TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)        AGE
+service/kubernetes   ClusterIP   10.43.0.1     <none>        443/TCP        7m33s
+service/web          NodePort    10.43.95.85   <none>        80:30000/TCP   78s
+
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/web   1/1     1            1           78s
+NAME                             DESIRED   CURRENT   READY   AGE
+replicaset.apps/web-75bd4d78f4   1         1         1       78s
+PS C:\Users\andre\Documents\docker\proj-kubdev\app\conversao-temperatura\src> kubectl get all
+NAME                       READY   STATUS    RESTARTS   AGE
+pod/web-75bd4d78f4-lndqj   1/1     Running   0          80s
+
+NAME                 TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)        AGE
+service/kubernetes   ClusterIP   10.43.0.1     <none>        443/TCP        7m35s
+service/web          NodePort    10.43.95.85   <none>        80:30000/TCP   80s
+
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/web   1/1     1            1           80s
+
+NAME                             DESIRED   CURRENT   READY   AGE
+replicaset.apps/web-75bd4d78f4   1         1         1       80s
+PS C:\Users\andre\Documents\docker\proj-kubdev\app\conversao-temperatura\src> kubectl get all
+NAME                       READY   STATUS    RESTARTS   AGE
+pod/web-75bd4d78f4-lndqj   1/1     Running   0          3m34s
+
+NAME                 TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)        AGE
+service/kubernetes   ClusterIP   10.43.0.1     <none>        443/TCP        9m49s
+service/web          NodePort    10.43.95.85   <none>        80:30000/TCP   3m34s
+
+NAME                  READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/web   1/1     1            1           3m34s
+
+NAME                             DESIRED   CURRENT   READY   AGE
+replicaset.apps/web-75bd4d78f4   1         1         1       3m34s
+PS C:\Users\andre\Documents\docker\proj-kubdev\app\conversao-temperatura\src> 
