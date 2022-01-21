@@ -1,14 +1,5 @@
 Segue abaixo como subi a aplicacao rotten-potatoes atraves da minha imagem.
 
-k3d cluster ls
-NAME         SERVERS   AGENTS   LOADBALANCER
-my-cluster   3/3       3/3      true
-
-k3d cluster delete my-cluster
-k3d cluster create --agents 3 --servers 3 -p "8080:30000@loadbalancer"
-kubectl apply -f deployment.yaml
-
-
 ------------------------------------------------------------------------------------------------------------------------------------------------------
 
 PS C:\Users\andre\Documents\docker\proj-kubdev> git clone https://github.com/randrelr/rotten-potatoes.git
