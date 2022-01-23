@@ -1,0 +1,134 @@
+Fazendo deploy usando a pipeline CI/CD :
+
+name: CI-CD
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+jobs:
+  CI:
+    runs-on: ubuntu-latest 
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Docker Login
+        uses: docker/login-action@v1.10.0
+        with:
+          username: ${{secrets.DOCKERHUB_USER}}
+          password: ${{secrets.DOCKERHUB_PWD}}
+
+      - name: Build and push Docker images
+        uses: docker/build-push-action@v2.7.0
+        with:
+          context: ./src
+          file: ./src/Dockerfile
+          push: true
+          tags: |
+            randrelr/rotten-potatoes:latest
+            randrelr/rotten-potatoes:${{github.run_number}}
+            
+  CD:
+    needs: [CI]
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v2
+      
+      - name: Kubernet set conext
+        uses: Azure/k8s-set-context@v1.1
+        with:
+          method: kubeconfig
+          kubeconfig: ${{ secrets.K8S_CONFIG }}
+          
+      - name: Deploy to Kubernetes cluster
+        uses: Azure/k8s-deploy@v1.5
+        with:
+          images: randrelr/rotten-potatoes:${{github.run_number}}
+          manifests: |
+            k8s/deployment.yaml
+
+
+
+Usando Kubectl para ver o cluster tao logo o deploy automatico terminou :
+
+NAME                                DESIRED   CURRENT   READY   AGE
+replicaset.apps/movies-5459c9958f   1         1         1       3m14s
+PS C:\Users\andre\Documents\docker\proj-kubdev\CICD\rotten-potatoes\src> kubectl get all
+NAME                          READY   STATUS    RESTARTS   AGE
+pod/mongodb-89dddc46-b8tgb    1/1     Running   0          4m11s
+pod/movies-5459c9958f-z9fwc   1/1     Running   0          4m11s
+
+NAME                      TYPE           CLUSTER-IP      EXTERNAL-IP    PORT(S)        AGE
+service/kubernetes        ClusterIP      10.245.0.1      <none>         443/TCP        3h55m
+service/mongodb-service   ClusterIP      10.245.214.93   <none>         27017/TCP      4m11s
+service/movies            LoadBalancer   10.245.100.1    45.55.106.39   80:30000/TCP   4m11s
+
+NAME                      READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/mongodb   1/1     1            1           4m12s
+deployment.apps/movies    1/1     1            1           4m12s
+
+NAME                                DESIRED   CURRENT   READY   AGE
+replicaset.apps/mongodb-89dddc46    1         1         1       4m12s
+replicaset.apps/movies-5459c9958f   1         1         1       4m12s
+
+PS C:\Users\andre\Documents\docker\proj-kubdev\CICD\rotten-potatoes\k8s> kubectl describe pod pod/movies-5459c9958f-pb6qh
+error: there is no need to specify a resource type as a separate argument when passing arguments in resource/name form (e.g. 'C:\Program Files\Docker\Docker\resources\bin\kubectl.exe get resource/<resource_name>' instead of 'C:\Program Files\Docker\Docker\resources\bin\kubectl.exe get resource resource/<resource_name>'
+PS C:\Users\andre\Documents\docker\proj-kubdev\CICD\rotten-potatoes\k8s> kubectl describe pod movies-5459c9958f-pb6qh
+Name:         movies-5459c9958f-pb6qh
+Namespace:    default
+Priority:     0
+Node:         pool-default-uswdi/10.116.0.3
+Start Time:   Sat, 22 Jan 2022 21:46:11 -0300
+Labels:       app=movies
+              pod-template-hash=5459c9958f
+Annotations:  githubWorkflow_22776761a9fd6573de79851962dc153e:
+                {"run":"1734496209","repository":"randrelr/rotten-potatoes","workflow":"CI-CD","workflowFileName":"main.yml","jobName":"CD","createdBy":"r...  
+Status:       Running
+IP:           10.244.0.70
+IPs:
+  IP:           10.244.0.70
+Controlled By:  ReplicaSet/movies-5459c9958f
+Containers:
+  movies:
+    Container ID:   containerd://e0a01ccd1c1a79f75b7818a561106bac3513179d54333c85cddc6257fbe68fd0
+    Image:          randrelr/rotten-potatoes:v1
+    Image ID:       docker.io/randrelr/rotten-potatoes@sha256:152e90bcd9fc709ebcff1dd43eff68ccc3ebc63eeb1c575638191c1247a3c5ff
+    Port:           5000/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Sat, 22 Jan 2022 21:46:12 -0300
+    Ready:          True
+    Restart Count:  0
+    Environment:
+      MONGODB_DB:        admin
+      MONGODB_HOST:      mongodb-service
+      MONGODB_PORT:      27017
+      MONGODB_USERNAME:  mongouser
+      MONGODB_PASSWORD:  mongopwd
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-x92mk (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  kube-api-access-x92mk:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    ConfigMapOptional:       <nil>
+    DownwardAPI:             true
+QoS Class:                   BestEffort
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type    Reason     Age   From               Message
+  ----    ------     ----  ----               -------
+  Normal  Scheduled  3m6s  default-scheduler  Successfully assigned default/movies-5459c9958f-pb6qh to pool-default-uswdi
+  Normal  Pulled     3m5s  kubelet            Container image "randrelr/rotten-potatoes:v1" already present on machine
+  Normal  Created    3m5s  kubelet            Created container movies
+  Normal  Started    3m5s  kubelet            Started container movies
+PS C:\Users\andre\Documents\docker\proj-kubdev\CICD\rotten-potatoes\k8s>
